@@ -1,0 +1,52 @@
+#     DATA SET DEFINITIONS
+#--------------------------------------
+SAheart <- read.csv(" /* File */ ")
+ran <- sample(10:nrow(SAheart), 0.7 * nrow(SAheart))
+nor <-function(x) { (x -min(x))/(max(x)-min(x))   }
+
+SAheart_norm <- as.data.frame(lapply(SAheart[,c(1,2,3,4,5,6,7,8,9)], nor))
+
+SAheart_train <- SAheart_norm[ran,] 
+SAheart_test <- SAheart_norm[-ran,] 
+SAheart_target_category <- SAheart[ran,10]
+SAheart_test_category <- SAheart[-ran,10]
+
+
+#        KNN ALGORITHMS FUNCTION
+#------------------------------------------
+guess.knn <- function(x, SAheart_train, trainlabels, k, l)
+{
+  xmatrix <- matrix(as.numeric(x), nrow=nrow(SAheart_train), ncol=length(x), byrow=T)
+  xmatrix <- (abs(as.matrix(SAheart_train)-xmatrix))^l
+  diffs <- (rowSums(xmatrix))^(1/l)
+  
+  diffs <- data.frame(dist=diffs,label=trainlabels)
+  diffs <- (diffs[order(diffs$dist),])
+  diffs <- diffs[1:k,]
+  
+  guess <- names(sort(-table(diffs$label)))[1]
+  
+  return(guess)
+}
+
+knn <- function(SAheart_train, SAheart_test, trainlabels, k=1, trainsample=NULL, l=2)
+{
+  if(ncol(SAheart_train)!=ncol(SAheart_test))
+    stop("Training and test set must contain equal number of features.")
+  if(length(trainlabels)!=nrow(SAheart_train))
+    stop("Training labels must be of same length as training set.")
+  
+  if(is.null(trainsample))
+    trainsample <- nrow(SAheart_train)
+  
+  subsample <- sample(1:nrow(SAheart_train), trainsample, replace=FALSE)
+  
+  SAheart_train <- SAheart_train[subsample,]
+  trainlabels = SAheart_target_category
+  
+  results <- apply(SAheart_test, 1, function(x) guess.knn(x, SAheart_train, trainlabels, k, l))
+  
+  return(results)
+}
+
+testresults <- knn(SAheart_train[,-1], SAheart_test[-1], trainlabels=SAheart_train[,1], k=1)
